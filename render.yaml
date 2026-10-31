@@ -1,0 +1,57 @@
+# Render Blueprint — Universal Converter
+# 使い方: GitHub にプッシュ → Render の「New > Blueprint」でこのリポジトリを選ぶ。
+# APP_KEY だけは手元で作って、Render の画面から設定する（下記）。
+services:
+  - type: web
+    name: universal-converter
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # free は動作確認用（CPU が小さく、アイドル時に停止する）。実運用では starter 以上を推奨。
+    plan: free
+    healthCheckPath: /up
+    autoDeployTrigger: commit
+    envVars:
+      # php artisan key:generate --show で作った値（base64:...）を設定する。リポジトリには入れない。
+      - key: APP_KEY
+        sync: false
+      - key: APP_NAME
+        value: Universal Converter
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        # デプロイ後に実際の URL（https://<サービス名>.onrender.com）へ変更する
+        value: https://universal-converter.onrender.com
+      - key: APP_LOCALE
+        value: ja
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      # Render のプロキシ越しでも https の URL を正しく作るため
+      - key: TRUSTED_PROXIES
+        value: "*"
+      # 変換はファイルベースで完結するので、セッション・キャッシュも DB を使わない
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /var/www/html/storage/app/database.sqlite
+      # --- Universal Converter ---
+      - key: CONVERTER_PYTHON
+        value: /opt/venv/bin/python
+      - key: CONVERTER_TIMEOUT
+        value: "60"
+      - key: CONVERTER_MAX_UPLOAD_KB
+        value: "2048"
+      # free プランは CPU が小さいので 1 に絞る。plan を上げたら増やしてよい。
+      - key: CONVERTER_MAX_CONCURRENT
+        value: "1"
+      - key: CONVERTER_CLEANUP_MINUTES
+        value: "60"

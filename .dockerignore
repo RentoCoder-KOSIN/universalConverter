@@ -1,0 +1,37 @@
+.git
+.gitignore
+.gitattributes
+.editorconfig
+
+# 秘密情報・環境ごとの設定（.env.example だけ含める）
+.env
+.env.*
+!.env.example
+
+# 依存関係・生成物（イメージの中で作り直す）
+vendor
+node_modules
+public/build
+python/.venv
+.venv
+**/__pycache__
+**/*.pyc
+bootstrap/cache/*.php
+storage/logs/*
+storage/framework/views/*.php
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/app/private/converter/*
+database/database.sqlite
+
+# 開発用
+tests
+python/tests
+.phpunit.result.cache
+.phpunit.cache
+*.zip
+LOOP.md
+laravel-zip-run.md
+python/result.json
+python/sample.csv
+python/test_convert.py
