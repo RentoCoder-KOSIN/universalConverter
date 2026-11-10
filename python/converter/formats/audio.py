@@ -52,6 +52,26 @@ def make_converter(target):
     return convert
 
 
+def audio_to_text(input_path, output_path):
+    """faster-whisper で音声を日本語文字起こしする。"""
+
+    ffprobe = _find("ffprobe", "CONVERTER_FFPROBE")
+    stream = _probe(ffprobe, input_path, time.monotonic() + _timeout())
+    del stream
+
+    from faster_whisper import WhisperModel
+
+    model = WhisperModel("small", device="cpu", compute_type="int8")
+    segments, _ = model.transcribe(
+        str(input_path), language="ja", vad_filter=True, beam_size=3
+    )
+    text = "\n".join(segment.text.strip() for segment in segments).strip()
+    if not text:
+        raise ValueError("音声から言葉を認識できませんでした")
+    with open(output_path, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text + "\n")
+
+
 def _timeout():
     try:
         value = float(os.environ.get("CONVERTER_FFMPEG_TIMEOUT", DEFAULT_TIMEOUT_SECONDS))

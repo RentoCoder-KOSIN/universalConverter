@@ -49,7 +49,7 @@ services:
       - key: CONVERTER_TIMEOUT
         value: "60"
       - key: CONVERTER_MAX_UPLOAD_KB
-        value: "2048"
+        value: "51200"
       # free プランは CPU が小さいので 1 に絞る。plan を上げたら増やしてよい。
       - key: CONVERTER_MAX_CONCURRENT
         value: "1"

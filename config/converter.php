@@ -18,7 +18,7 @@ return [
     'timeout' => (int) env('CONVERTER_TIMEOUT', 30),
 
     // アップロードの上限（KB）。PHP 側の upload_max_filesize / post_max_size も上限になる。
-    'max_upload_kb' => (int) env('CONVERTER_MAX_UPLOAD_KB', 2048),
+    'max_upload_kb' => (int) env('CONVERTER_MAX_UPLOAD_KB', 51200),
 
     // 同時に実行できる変換の数。超えたリクエストは「混み合っています」と返す。
     // 複数のサーバープロセス間でも守られるよう、キャッシュのロックで数える。
@@ -43,11 +43,12 @@ return [
     'group_notes' => [
         'データ' => 'CSV と JSON を相互に変換します。',
         'テキスト' => 'JSON の整形・検証と、UTF-8 / Shift_JIS / EUC-JP / UTF-16 の文字コードを UTF-8 に変換できます。',
-        '画像' => 'アニメーション GIF は最初の 1 コマだけが変換されます。撮影情報などのメタデータは引き継ぎません。',
-        '音声' => '3 分まで、変換後 32 MB までです。タグやカバー画像は引き継がず、MP3 / OGG は 3 チャンネル以上がステレオになります。',
+        '画像' => 'WebP への軽量化に対応。アニメーション GIF は先頭フレームだけになり、撮影情報などのメタデータは引き継ぎません。',
+        '音声' => '3 分まで、変換後 32 MB までです。文字起こしは Whisper の初回モデル取得後、音声をサーバー内で処理します。',
         'PDF' => '文字の抽出（画像だけの PDF は不可）と、ページの画像化（全ページは 50 ページまで）に対応します。パスワード付きは扱えません。',
         '動画' => '60 秒まで、フル HD まで、変換後 50 MB までです。撮影場所などのメタデータは引き継がず、変換には時間がかかります。',
         'アーカイブ' => 'ZIP と tar.gz は相互に変換できます。リンク・暗号化・危険なパスを含むものや、展開後 100 MB・1000 ファイルを超えるものは断ります。',
+        '仕事・学習' => '画像の文字抽出はサーバーに Tesseract OCR が必要です。抽出した文字は UTF-8 のテキストとしてダウンロードできます。',
     ],
 
     /*
@@ -125,6 +126,13 @@ return [
             'output_extension' => 'gif',
             'mime' => 'image/gif',
         ],
+        'image_compress_webp' => [
+            'group' => '画像',
+            'label' => '画像を軽量化（WebP）',
+            'input_extensions' => ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'],
+            'output_extension' => 'webp',
+            'mime' => 'image/webp',
+        ],
         'audio_to_mp3' => [
             'group' => '音声',
             'label' => '音声 → MP3',
@@ -160,6 +168,23 @@ return [
             'output_extension' => 'ogg',
             'mime' => 'audio/ogg',
         ],
+        'audio_to_text' => [
+            'group' => '仕事・学習',
+            'label' => '音声を文字起こし（日本語）',
+            'input_extensions' => ['mp3', 'wav', 'm4a', 'flac', 'ogg'],
+            'output_extension' => 'txt',
+            'mime' => 'text/plain',
+            'max_upload_kb' => 51200,
+            'timeout' => 300,
+        ],
+        'image_to_text' => [
+            'group' => '仕事・学習',
+            'label' => '画像から文字を抽出（OCR）',
+            'input_extensions' => ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'],
+            'output_extension' => 'txt',
+            'mime' => 'text/plain',
+            'timeout' => 60,
+        ],
         // --- PDF（pypdf / pypdfium2 / Pillow が必要） ---
         'pdf_to_txt' => [
             'group' => 'PDF',
@@ -167,7 +192,7 @@ return [
             'input_extensions' => ['pdf'],
             'output_extension' => 'txt',
             'mime' => 'text/plain',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         'pdf_first_page_to_png' => [
             'group' => 'PDF',
@@ -175,7 +200,7 @@ return [
             'input_extensions' => ['pdf'],
             'output_extension' => 'png',
             'mime' => 'image/png',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         'pdf_to_png_zip' => [
             'group' => 'PDF',
@@ -183,7 +208,7 @@ return [
             'input_extensions' => ['pdf'],
             'output_extension' => 'zip',
             'mime' => 'application/zip',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         'image_to_pdf' => [
             'group' => 'PDF',
@@ -191,7 +216,7 @@ return [
             'input_extensions' => ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'],
             'output_extension' => 'pdf',
             'mime' => 'application/pdf',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         // --- 動画（FFmpeg / ffprobe が必要）。重い処理なので、タイムアウトとアップロード上限を個別に設定する ---
         'video_to_mp4' => [
@@ -200,7 +225,7 @@ return [
             'input_extensions' => ['mp4', 'mov', 'webm'],
             'output_extension' => 'mp4',
             'mime' => 'video/mp4',
-            'max_upload_kb' => 30720,
+            'max_upload_kb' => 51200,
             'timeout' => 120,
         ],
         'video_to_mp4_small' => [
@@ -209,7 +234,7 @@ return [
             'input_extensions' => ['mp4', 'mov', 'webm'],
             'output_extension' => 'mp4',
             'mime' => 'video/mp4',
-            'max_upload_kb' => 30720,
+            'max_upload_kb' => 51200,
             'timeout' => 120,
         ],
         'video_to_webm' => [
@@ -218,7 +243,7 @@ return [
             'input_extensions' => ['mp4', 'mov', 'webm'],
             'output_extension' => 'webm',
             'mime' => 'video/webm',
-            'max_upload_kb' => 30720,
+            'max_upload_kb' => 51200,
             'timeout' => 120,
         ],
         'video_extract_audio' => [
@@ -227,7 +252,7 @@ return [
             'input_extensions' => ['mp4', 'mov', 'webm'],
             'output_extension' => 'mp3',
             'mime' => 'audio/mpeg',
-            'max_upload_kb' => 30720,
+            'max_upload_kb' => 51200,
             'timeout' => 120,
         ],
         // --- アーカイブ ---
@@ -237,7 +262,7 @@ return [
             'input_extensions' => ['zip'],
             'output_extension' => 'tar.gz',
             'mime' => 'application/gzip',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         'targz_to_zip' => [
             'group' => 'アーカイブ',
@@ -245,7 +270,7 @@ return [
             'input_extensions' => ['gz', 'tgz'],
             'output_extension' => 'zip',
             'mime' => 'application/zip',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
         'zip_info' => [
             'group' => 'アーカイブ',
@@ -253,7 +278,7 @@ return [
             'input_extensions' => ['zip'],
             'output_extension' => 'json',
             'mime' => 'application/json',
-            'max_upload_kb' => 10240,
+            'max_upload_kb' => 51200,
         ],
     ],
 

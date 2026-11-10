@@ -28,6 +28,51 @@ def make_converter(target):
     return convert
 
 
+def compress_webp(input_path, output_path):
+    """画像を画質を保ちやすい設定で WebP に圧縮する。"""
+
+    image = _prepare(load_image(input_path), "WEBP")
+    image.save(output_path, format="WEBP", quality=78, method=6, optimize=True)
+
+
+def image_to_text(input_path, output_path):
+    """Tesseract OCR で日本語と英語の文字を抽出する。"""
+
+    import shutil
+    import subprocess
+
+    executable = shutil.which("tesseract")
+    if executable is None:
+        raise ImportError("Tesseract OCR が見つかりません")
+
+    image = load_image(input_path).convert("RGB")
+    try:
+        result = subprocess.run(
+            [executable, "stdin", "stdout", "-l", "jpn+eng", "--psm", "3"],
+            input=_image_bytes(image),
+            capture_output=True,
+            timeout=45,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError("文字の読み取りに時間がかかりすぎました") from None
+    if result.returncode != 0:
+        raise ValueError("文字を読み取れませんでした。日本語 OCR データが必要です")
+    text = result.stdout.decode("utf-8", errors="replace").strip()
+    if not text:
+        raise ValueError("画像から文字を見つけられませんでした")
+    with open(output_path, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text + "\n")
+
+
+def _image_bytes(image):
+    import io
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 def load_image(input_path):
     """画像を安全に読み込み、向きを補正した Pillow の画像を返す。
 

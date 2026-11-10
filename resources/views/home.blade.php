@@ -14,7 +14,7 @@
 
     <section class="hero">
         <h1>ファイルの形式を、<br>かんたんに変えよう。</h1>
-        <p>CSV、画像、音声、動画、PDF、ZIP などを別の形式に変換できます。登録は要りません。ファイルを選ぶだけです。</p>
+        <p>CSV、画像、音声、動画、PDF、ZIP の変換に加え、音声の文字起こしや画像の文字抽出、画像の軽量化もできます。</p>
         <a class="button" href="{{ route('converter.index') }}">変換をはじめる</a>
     </section>
 

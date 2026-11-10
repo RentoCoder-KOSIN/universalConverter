@@ -538,11 +538,11 @@ Universal Converter は、一度にすべての機能を実装するのではな
 | `pdf_to_txt` | `.pdf` | `.txt` | pypdf が必要。文字（テキストレイヤー）を取り出して UTF-8 で出力する。画像だけのスキャン PDF は文字を取り出せず `invalid_input`（OCR は未対応）。パスワード付き・壊れた PDF は拒否。200 ページまで |
 | `pdf_first_page_to_png` / `pdf_to_png_zip` | `.pdf` | `.png` / `.zip`（`page_001.png` …） | pypdfium2 と Pillow が必要。150 dpi で画像化し、1 ページが 25 メガピクセルを超える場合は縮小する。全ページ（ZIP）は 50 ページまで。パスワード付き・壊れた PDF は拒否 |
 | `image_to_pdf` | `.png` `.jpg` `.jpeg` `.webp` `.bmp` `.gif` | `.pdf` | 画像の制約は上の画像変換と同じ（中身で判定、25 メガピクセルまで）。1 ページの PDF にする（150 dpi 換算）。透明は白背景に合成。メタデータは引き継がない |
-| `video_to_mp4` / `video_to_mp4_small` / `video_to_webm` / `video_extract_audio` | `.mp4` `.mov` `.webm` | `.mp4`（H.264 + AAC）/ `.mp4`（高さ最大 720 に縮小、画質を下げる）/ `.webm`（VP9 + Opus）/ `.mp3` | FFmpeg / ffprobe が必要。形式は**中身**で判定し、HLS・concat など他のファイルを参照する形式は拒否する。入力は 60 秒・フル HD（1920x1088 画素）まで、出力は 50 MB まで。映像と音声は 1 本目だけを使い、音声が無ければ音声なしで出力する（音声の取り出しは音声が必須）。幅・高さは偶数にそろえる。メタデータ（撮影場所など）は引き継がない。1 回の変換は最大 120 秒、アップロードは 30 MB まで（`config/converter.php` の変換ごとの設定） |
+| `video_to_mp4` / `video_to_mp4_small` / `video_to_webm` / `video_extract_audio` | `.mp4` `.mov` `.webm` | `.mp4`（H.264 + AAC）/ `.mp4`（高さ最大 720 に縮小、画質を下げる）/ `.webm`（VP9 + Opus）/ `.mp3` | FFmpeg / ffprobe が必要。形式は**中身**で判定し、HLS・concat など他のファイルを参照する形式は拒否する。入力は 60 秒・フル HD（1920x1088 画素）まで、出力は 50 MB まで。映像と音声は 1 本目だけを使い、音声が無ければ音声なしで出力する（音声の取り出しは音声が必須）。幅・高さは偶数にそろえる。メタデータ（撮影場所など）は引き継がない。1 回の変換は最大 120 秒、アップロードは全変換 50 MB まで |
 | `zip_to_targz` / `targz_to_zip` | `.zip` / `.gz`（tar.gz） | `.tar.gz` / `.zip` | ファイルとして展開せず 1 件ずつ詰め直すので、パス・トラバーサルは構造的に起きない。そのうえで次を拒否する：`..`・絶対パス・ドライブ名・NUL を含む名前、シンボリックリンク・ハードリンク・デバイスファイル、パスワード付き ZIP、1000 件超、展開後 100 MB 超、圧縮率 200 倍超（1 MB 以上のファイル。ZIP 爆弾）、壊れたアーカイブ。所有者は 0、権限は 0644（ディレクトリは 0755）にそろえる。ダウンロード名は `backup.tar.gz` → `backup.zip` |
 | `zip_info` | `.zip` | `.json` | 展開せずに、件数・合計サイズ・各エントリー（名前・サイズ・圧縮後サイズ・問題点）・注意点（危険な名前、リンク、暗号化、極端な圧縮率）を出力する。危険なエントリーがあってもエラーにせず `warnings` に載せる。エントリーは先頭 1000 件まで |
 
-アップロードの上限は、PDF・アーカイブが 10 MB、動画が 30 MB、それ以外は 2 MB（変換ごとに `config/converter.php` で設定）。
+アップロードの上限は全変換で 50 MB（`config/converter.php` で設定）。
 
 画像変換と画像 → PDF には Pillow、PDF の変換には pypdf と pypdfium2 が必要（`python/requirements.txt`。pypdfium2 は PyMuPDF と違い、ライセンスが緩い）。音声・動画の変換には FFmpeg と ffprobe が必要（Python のパッケージではなく OS のコマンド。Docker イメージには `apt` で入れている）。
 
@@ -582,7 +582,7 @@ php artisan test --filter=ConverterTest
 |---|---|---|
 | `CONVERTER_PYTHON` | `python3` | Python 実行ファイル（仮想環境ならフルパス） |
 | `CONVERTER_TIMEOUT` | `30` | 1 回の変換のタイムアウト（秒） |
-| `CONVERTER_MAX_UPLOAD_KB` | `2048` | アップロード上限（KB）。PHP の `upload_max_filesize` / `post_max_size` も上限になる |
+| `CONVERTER_MAX_UPLOAD_KB` | `51200` | アップロード上限（KB、全変換 50 MB）。PHP の `upload_max_filesize` / `post_max_size` も上限になる |
 | `CONVERTER_MAX_CONCURRENT` | `2` | 同時に実行できる変換の数。超えたリクエストは変換を始めず「混み合っています」と返す（キャッシュのロックで数える。`file` / `database` / `redis` などロック対応のキャッシュが必要） |
 | `CONVERTER_CLEANUP_MINUTES` | `60` | この分数より古い作業ディレクトリを残骸として削除する（リクエストごと、`php artisan converter:cleanup`、Docker では 10 分おき） |
 | `CONVERTER_FFMPEG` / `CONVERTER_FFPROBE` | `ffmpeg` / `ffprobe` | FFmpeg / ffprobe の実行ファイル（PATH にあれば指定不要） |
@@ -609,7 +609,7 @@ php artisan test --filter=ConverterTest
 - ZIP に `.env` や `storage/logs/laravel.log` を含めない。共有・デプロイ用のアーカイブは `.dockerignore` / `.gitignore` の方針に従う。
 - 音声の入力は 3 分、出力は 32 MB までに制限している。上限は `python/converter/formats/audio.py` の `MAX_DURATION_SECONDS` / `MAX_OUTPUT_BYTES`。
 - 動画の変換は重く、Render の `free` プランでは時間切れ（「処理に時間がかかりすぎたため中止しました」）になりやすい。動画の `timeout`（120 秒）は `config/converter.php` の変換ごとの設定で、`render.yaml` の `CONVERTER_TIMEOUT`（全体の設定）とは別。
-- 動画・PDF・アーカイブのアップロード上限に合わせ、`docker/php.ini` を `upload_max_filesize = 32M` / `post_max_size = 40M` / `max_execution_time = 150` にした。ローカルで `php artisan serve` を使うときは、`php.ini`（`php --ini` で場所を確認）で同じ値に上げないと、2〜8 MB を超えるアップロードは PHP に断られる。
+- 全変換のアップロード上限に合わせ、`docker/php.ini` を `upload_max_filesize = 64M` / `post_max_size = 64M` / `max_execution_time = 150` にした。ローカルで `php artisan serve` を使うときは、`php.ini`（`php --ini` で場所を確認）でも同等の値に上げる。
 - 変換結果はメモリに読み込んで返す。出力が大きい動画（最大 50 MB）やアーカイブ（展開後最大 100 MB）は `memory_limit = 256M` を使うため、メモリの小さいインスタンスでは同時実行数（`CONVERTER_MAX_CONCURRENT`）を下げる。
 - PDF は、画像だけのスキャン PDF から文字を取り出せない（OCR は未対応）。ページ範囲の指定、PDF の結合・分割、画質や解像度の指定は、変換オプションの画面が無いため未対応（5.3 の将来機能）。
 - 動画の入力は、拡張子ではなく ffprobe の判定（`format_name`）で許可している。M4A（音声だけの MP4）は動画としては拒否される。

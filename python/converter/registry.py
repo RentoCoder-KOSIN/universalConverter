@@ -6,9 +6,9 @@
 """
 
 from converter.formats.archive import targz_to_zip, zip_info, zip_to_targz
-from converter.formats.audio import make_converter as make_audio_converter
+from converter.formats.audio import audio_to_text, make_converter as make_audio_converter
 from converter.formats.csv_json import csv_to_json
-from converter.formats.image import make_converter
+from converter.formats.image import compress_webp, image_to_text, make_converter
 from converter.formats.json_csv import json_to_csv
 from converter.formats.pdf import (
     image_to_pdf,
@@ -32,12 +32,15 @@ OPERATIONS = {
     "image_to_webp": make_converter("webp"),
     "image_to_bmp": make_converter("bmp"),
     "image_to_gif": make_converter("gif"),
+    "image_compress_webp": compress_webp,
+    "image_to_text": image_to_text,
     # 音声（FFmpeg / ffprobe が必要。未導入のときは変換実行時にエラーを返す）
     "audio_to_mp3": make_audio_converter("mp3"),
     "audio_to_wav": make_audio_converter("wav"),
     "audio_to_m4a": make_audio_converter("m4a"),
     "audio_to_flac": make_audio_converter("flac"),
     "audio_to_ogg": make_audio_converter("ogg"),
+    "audio_to_text": audio_to_text,
     # 動画（FFmpeg / ffprobe が必要）
     "video_to_mp4": make_video_converter("mp4"),
     "video_to_mp4_small": make_video_converter("mp4_small"),

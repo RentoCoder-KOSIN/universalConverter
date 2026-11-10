@@ -21,7 +21,7 @@ CSV・JSON・テキスト・画像・音声・動画・PDF・アーカイブを�
 
 ### 制限
 
-- アップロードは 1 ファイル 2 MB まで（`CONVERTER_MAX_UPLOAD_KB`）。PDF・アーカイブは 10 MB、動画は 30 MB まで（変換ごとの設定。`config/converter.php`）。
+- アップロードは全変換で 1 ファイル 50 MB まで（`CONVERTER_MAX_UPLOAD_KB`、`config/converter.php`）。
 - 1 回の変換は 30 秒まで（`CONVERTER_TIMEOUT`。動画は 120 秒まで）。同時に実行できる変換は 2 件まで（`CONVERTER_MAX_CONCURRENT`）で、超えると「混み合っています」と表示します。
 - 画像は 25 メガピクセルまで。音声は 3 分まで、変換後は 32 MB までです。動画は 60 秒・フル HD まで、変換後は 50 MB までです。
 - PDF は文字の抽出が 200 ページ、画像化が 50 ページまで（パスワード付きは不可）。アーカイブは 1000 ファイル・展開後 100 MB までで、リンク・暗号化・危険なパス（`../` など）・極端な圧縮率のものは拒否します。
@@ -89,7 +89,7 @@ php artisan test
 |---|---|---|
 | `CONVERTER_PYTHON` | `python3` | Python 実行ファイル（Docker では `/opt/venv/bin/python`） |
 | `CONVERTER_TIMEOUT` | `30` | 1 回の変換のタイムアウト（秒） |
-| `CONVERTER_MAX_UPLOAD_KB` | `2048` | アップロード上限（KB） |
+| `CONVERTER_MAX_UPLOAD_KB` | `51200` | アップロード上限（KB、全変換 50 MB） |
 | `CONVERTER_MAX_CONCURRENT` | `2` | 同時に実行できる変換の数 |
 | `CONVERTER_CLEANUP_MINUTES` | `60` | この分数より古い一時ファイルを自動削除する |
 | `CONVERTER_FFMPEG` / `CONVERTER_FFPROBE` | `ffmpeg` / `ffprobe` | FFmpeg / ffprobe の場所（PATH にあれば不要） |
