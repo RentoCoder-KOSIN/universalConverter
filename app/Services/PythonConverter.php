@@ -33,7 +33,7 @@ class PythonConverter
     /**
      * @throws ConversionException
      */
-    public function convert(string $operation, string $inputPath, string $outputPath): void
+    public function convert(string $operation, string $inputPath, string $outputPath, ?int $pageNumber = null): void
     {
         if (! array_key_exists($operation, config('converter.operations'))) {
             throw new ConversionException('未対応の変換形式です。');
@@ -42,14 +42,21 @@ class PythonConverter
         $timeout = $this->timeoutFor($operation);
 
         // シェル文字列を組み立てず、引数配列で起動する。
+        $arguments = [
+            config('converter.python'),
+            '-m', 'converter.main',
+            $operation,
+            $inputPath,
+            $outputPath,
+        ];
+
+        if ($pageNumber !== null) {
+            $arguments[] = '--page';
+            $arguments[] = (string) $pageNumber;
+        }
+
         $process = new Process(
-            [
-                config('converter.python'),
-                '-m', 'converter.main',
-                $operation,
-                $inputPath,
-                $outputPath,
-            ],
+            $arguments,
             config('converter.working_directory'),
             // Windows などの文字コード設定に左右されないよう UTF-8 に固定する。
             [

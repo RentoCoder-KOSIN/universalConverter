@@ -97,6 +97,17 @@ class PdfTest(unittest.TestCase):
             self.assertAlmostEqual(image.width, 417, delta=2)
             self.assertAlmostEqual(image.height, 208, delta=2)
 
+    def test_selected_page_to_png(self):
+        out = self.tmp / "page.png"
+        convert("pdf_page_to_png", self.blank_pdf(pages=3), out, page_number=2)
+        with Image.open(out) as image:
+            self.assertEqual(image.format, "PNG")
+            self.assertAlmostEqual(image.width, 417, delta=2)
+
+    def test_selected_page_must_exist(self):
+        with self.assertRaisesRegex(ValueError, "指定したページがありません"):
+            convert("pdf_page_to_png", self.blank_pdf(pages=1), self.tmp / "o.png", page_number=2)
+
     def test_png_zip_has_one_image_per_page(self):
         out = self.tmp / "o.zip"
         convert("pdf_to_png_zip", self.blank_pdf(pages=3), out)
@@ -130,19 +141,35 @@ class PdfTest(unittest.TestCase):
 
     def test_encrypted_pdf_is_rejected_by_all_operations(self):
         src = self.blank_pdf(password="secret", name="locked.pdf")
-        for op, ext in [("pdf_to_txt", "txt"), ("pdf_first_page_to_png", "png"), ("pdf_to_png_zip", "zip")]:
+        for op, ext in [
+            ("pdf_to_txt", "txt"),
+            ("pdf_first_page_to_png", "png"),
+            ("pdf_page_to_png", "png"),
+            ("pdf_to_png_zip", "zip"),
+        ]:
             with self.subTest(op=op):
                 with self.assertRaises(ValueError) as ctx:
-                    convert(op, src, self.tmp / f"o.{ext}")
+                    if op == "pdf_page_to_png":
+                        convert(op, src, self.tmp / f"o.{ext}", page_number=1)
+                    else:
+                        convert(op, src, self.tmp / f"o.{ext}")
                 self.assertIn("パスワード", str(ctx.exception))
 
     def test_not_a_pdf_is_rejected_by_all_operations(self):
         src = self.tmp / "fake.pdf"
         src.write_text("これは PDF ではありません")
-        for op, ext in [("pdf_to_txt", "txt"), ("pdf_first_page_to_png", "png"), ("pdf_to_png_zip", "zip")]:
+        for op, ext in [
+            ("pdf_to_txt", "txt"),
+            ("pdf_first_page_to_png", "png"),
+            ("pdf_page_to_png", "png"),
+            ("pdf_to_png_zip", "zip"),
+        ]:
             with self.subTest(op=op):
                 with self.assertRaises(ValueError):
-                    convert(op, src, self.tmp / f"o.{ext}")
+                    if op == "pdf_page_to_png":
+                        convert(op, src, self.tmp / f"o.{ext}", page_number=1)
+                    else:
+                        convert(op, src, self.tmp / f"o.{ext}")
 
     def test_empty_and_truncated_pdf_are_rejected(self):
         good = make_text_pdf()

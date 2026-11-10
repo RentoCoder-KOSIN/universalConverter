@@ -8,7 +8,7 @@ from pathlib import Path
 from converter.registry import get_operation, operation_names
 
 
-def convert(operation, input_path, output_path):
+def convert(operation, input_path, output_path, page_number=None):
     """指定された変換処理を実行する。"""
 
     func = get_operation(operation)
@@ -23,7 +23,10 @@ def convert(operation, input_path, output_path):
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    func(input_file, output_file)
+    if operation == "pdf_page_to_png":
+        func(input_file, output_file, page_number)
+    else:
+        func(input_file, output_file)
 
     return output_file
 
@@ -41,6 +44,7 @@ def main():
 
     parser.add_argument("input", help="入力ファイルのパス")
     parser.add_argument("output", help="出力ファイルのパス")
+    parser.add_argument("--page", type=int, help="PDF から PNG にするページ番号（1 始まり）")
 
     args = parser.parse_args()
 
@@ -49,6 +53,7 @@ def main():
             args.operation,
             args.input,
             args.output,
+            args.page,
         )
 
         print(json.dumps({

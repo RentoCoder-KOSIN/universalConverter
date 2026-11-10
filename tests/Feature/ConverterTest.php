@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Services\PythonConverter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -58,7 +60,7 @@ class ConverterTest extends TestCase
     private function zipBytes(array $entries): string
     {
         $path = sys_get_temp_dir().'/conv_test_'.bin2hex(random_bytes(4)).'.zip';
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
         foreach ($entries as $name => $content) {
@@ -81,7 +83,7 @@ class ConverterTest extends TestCase
         file_put_contents($path, $bytes);
 
         try {
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             $this->assertTrue($zip->open($path) === true, '出力が ZIP として開けない');
             $names = [];
 
@@ -104,7 +106,6 @@ class ConverterTest extends TestCase
 
         return $process->isSuccessful();
     }
-
 
     private function ffmpegAvailable(): bool
     {
@@ -516,6 +517,33 @@ class ConverterTest extends TestCase
         $this->assertStringStartsWith("\x89PNG", $response->streamedContent());
     }
 
+    public function test_pdf_selected_page_is_rendered_as_png(): void
+    {
+        if (! $this->pythonHasModules('pypdfium2', 'PIL')) {
+            $this->markTestSkipped('Python に pypdfium2 / Pillow が入っていないためスキップ');
+        }
+
+        $response = $this->post('/converter', [
+            'operation' => 'pdf_page_to_png',
+            'page' => 1,
+            'file' => $this->upload('doc.pdf', base64_decode(self::PDF_BASE64)),
+        ]);
+
+        $response->assertDownload('doc.png');
+        $this->assertStringStartsWith("\x89PNG", $response->streamedContent());
+    }
+
+    public function test_pdf_selected_page_must_be_between_one_and_fifty(): void
+    {
+        foreach ([0, 51] as $page) {
+            $this->post('/converter', [
+                'operation' => 'pdf_page_to_png',
+                'page' => $page,
+                'file' => $this->upload('doc.pdf', base64_decode(self::PDF_BASE64)),
+            ])->assertSessionHasErrors('page');
+        }
+    }
+
     public function test_pdf_pages_are_zipped_as_png(): void
     {
         if (! $this->pythonHasModules('pypdfium2', 'PIL') || ! class_exists(\ZipArchive::class)) {
@@ -719,7 +747,7 @@ class ConverterTest extends TestCase
 
     public function test_heavy_operations_have_their_own_timeout_and_upload_limit(): void
     {
-        $converter = app(\App\Services\PythonConverter::class);
+        $converter = app(PythonConverter::class);
 
         $this->assertSame(120, $converter->timeoutFor('video_to_mp4'));
         $this->assertSame((int) config('converter.timeout'), $converter->timeoutFor('csv_to_json'));
@@ -800,7 +828,7 @@ class ConverterTest extends TestCase
         chmod($script, 0755);
         config(['converter.python' => $script, 'app.debug' => false]);
 
-        \Illuminate\Support\Facades\Log::spy();
+        Log::spy();
 
         try {
             $this->post('/converter', [
@@ -812,7 +840,7 @@ class ConverterTest extends TestCase
             $this->assertStringNotContainsString('boom', $message);
             $this->assertStringNotContainsString('laravel.log', $message);
 
-            \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')
+            Log::shouldHaveReceived('warning')
                 ->withArgs(fn ($text, $context) => $text === 'converter: failed'
                     && str_contains($context['stderr_tail'] ?? '', 'No module named boom'))
                 ->once();

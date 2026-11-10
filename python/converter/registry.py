@@ -13,6 +13,7 @@ from converter.formats.json_csv import json_to_csv
 from converter.formats.pdf import (
     image_to_pdf,
     pdf_first_page_to_png,
+    pdf_page_to_png,
     pdf_to_png_zip,
     pdf_to_txt,
 )
@@ -49,6 +50,7 @@ OPERATIONS = {
     # PDF（pypdf / pypdfium2 / Pillow が必要）
     "pdf_to_txt": pdf_to_txt,
     "pdf_first_page_to_png": pdf_first_page_to_png,
+    "pdf_page_to_png": pdf_page_to_png,
     "pdf_to_png_zip": pdf_to_png_zip,
     "image_to_pdf": image_to_pdf,
     # アーカイブ

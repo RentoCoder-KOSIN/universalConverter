@@ -37,6 +37,10 @@ class ConverterController extends Controller
             'file.required' => 'ファイルを選んでください。',
             'file.file' => 'ファイルのアップロードに失敗しました。',
             'file.max' => 'ファイルサイズが上限（:max KB）を超えています。',
+            'page.required' => 'PNG にするページ番号を入力してください。',
+            'page.integer' => 'ページ番号は整数で入力してください。',
+            'page.min' => 'ページ番号は 1 以上を指定してください。',
+            'page.max' => 'ページ番号は 50 以下を指定してください。',
         ];
 
         // アップロードの上限は変換ごとに違うため、先に変換の種類だけを検証する。
@@ -51,13 +55,21 @@ class ConverterController extends Controller
             'file' => ['required', 'file', 'max:'.($operation['max_upload_kb'] ?? config('converter.max_upload_kb'))],
         ], $messages);
 
+        $pageNumber = null;
+        if ($operationName === 'pdf_page_to_png') {
+            $request->validate([
+                'page' => ['required', 'integer', 'min:1', 'max:50'],
+            ], $messages);
+            $pageNumber = $request->integer('page');
+        }
+
         $upload = $request->file('file');
 
         // 拡張子は使い方の案内として確認する。内容の検証は Python 側で行う。
         $extension = strtolower($upload->getClientOriginalExtension());
         if (! in_array($extension, $operation['input_extensions'], true)) {
             return back()
-                ->withInput($request->only('operation'))
+                ->withInput($request->only('operation', 'page'))
                 ->withErrors(['file' => $operation['label'].' には .'.implode(' / .', $operation['input_extensions']).' ファイルを選んでください。']);
         }
 
@@ -76,14 +88,14 @@ class ConverterController extends Controller
 
             // 同時実行数の上限を超えているときは、変換を始めずに断る。
             $limiter->run(
-                fn () => $converter->convert($operationName, $workDir.'/'.$inputName, $outputPath),
+                fn () => $converter->convert($operationName, $workDir.'/'.$inputName, $outputPath, $pageNumber),
                 $converter->timeoutFor($operationName),
             );
 
             $contents = File::get($outputPath);
         } catch (ConversionException $e) {
             return back()
-                ->withInput($request->only('operation'))
+                ->withInput($request->only('operation', 'page'))
                 ->withErrors(['file' => $e->getMessage()]);
         } finally {
             // 成功・失敗どちらでも一時ファイルを削除する。
@@ -118,7 +130,7 @@ class ConverterController extends Controller
         // 「backup.tar.gz」のような名前から、出力の拡張子と重なる「.tar」を取り除く
         $base = preg_replace('/\.tar$/i', '', $base) ?? $base;
         $base = preg_replace('/[\x00-\x1F\x7F\/\\\\:*?"<>|]+/u', '_', $base) ?? '';
-        $base = trim($base, " ._");
+        $base = trim($base, ' ._');
 
         if ($base === '') {
             $base = 'converted';

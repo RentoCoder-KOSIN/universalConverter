@@ -812,6 +812,34 @@ main {
     font-weight: 700;
 }
 
+.page-options {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.page-options[hidden] {
+    display: none;
+}
+
+.page-options label {
+    font-weight: 700;
+}
+
+.page-options input {
+    width: min(100%, 12rem);
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    background: var(--card);
+    font: inherit;
+}
+
+.page-options input:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+}
+
 .alert {
     background: var(--danger-soft);
     color: var(--ink);

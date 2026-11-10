@@ -59,6 +59,7 @@
                                            data-accept="{{ implode(',', array_map(fn ($e) => '.'.$e, $operation['input_extensions'])) }}"
                                            data-in="{{ implode(',', $operation['input_extensions']) }}"
                                            data-out="{{ $operation['output_extension'] ?? '' }}"
+                                           data-needs-page="{{ $key === 'pdf_page_to_png' ? 'true' : 'false' }}"
                                            data-limit-kb="{{ $operation['max_upload_kb'] ?? $maxUploadKb }}"
                                            @checked($key === $selectedKey)
                                            required>
@@ -111,6 +112,13 @@
                 <p class="hint" id="file-hint"></p>
             </div>
 
+            <div id="page-options" class="page-options" @if ($selectedKey !== 'pdf_page_to_png') hidden @endif>
+                <label for="page">PNG にするページ番号</label>
+                <input id="page" name="page" type="number" min="1" max="50" value="{{ old('page', 1) }}"
+                       @if ($selectedKey === 'pdf_page_to_png') required @endif>
+                <p class="hint">1〜50 の整数を指定してください。PDF のページ数を超える番号は指定できません。</p>
+            </div>
+
             @if ($errors->any())
                 <div class="alert" role="alert">
                     <strong>変換できませんでした</strong>
@@ -156,6 +164,8 @@
             const stateText = document.getElementById('state-text');
             const submit = document.getElementById('submit');
             const status = document.getElementById('status');
+            const pageOptions = document.getElementById('page-options');
+            const pageInput = document.getElementById('page');
 
             const idleMain = zoneMain.textContent;
             const idleState = stateText.dataset.idle;
@@ -276,6 +286,9 @@
 
                 // 変換の種類に合わせて、選べるファイルの拡張子を絞る
                 file.accept = op.dataset.accept;
+                const needsPage = op.dataset.needsPage === 'true';
+                pageOptions.hidden = !needsPage;
+                pageInput.required = needsPage;
 
                 readName.textContent = op.dataset.label;
                 readIn.replaceChildren.apply(readIn, op.dataset.in.split(',').map(function (e) {

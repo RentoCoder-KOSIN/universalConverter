@@ -47,6 +47,21 @@ def pdf_first_page_to_png(input_path, output_path):
     image.save(output_path, format="PNG")
 
 
+def pdf_page_to_png(input_path, output_path, page_number):
+    """PDF の指定ページ（1 始まり）を PNG にする。"""
+
+    if page_number is None or page_number < 1 or page_number > MAX_IMAGE_PAGES:
+        raise ValueError(f"ページ番号は 1 から {MAX_IMAGE_PAGES} の範囲で指定してください")
+
+    with _open_pdfium(input_path) as pdf:
+        if page_number > len(pdf):
+            raise ValueError(f"指定したページがありません（全 {len(pdf)} ページ）")
+
+        image = _render_page(pdf, page_number - 1)
+
+    image.save(output_path, format="PNG")
+
+
 def pdf_to_png_zip(input_path, output_path):
     """PDF の全ページを PNG にして、ZIP にまとめる（page_001.png, page_002.png ...）。"""
 
