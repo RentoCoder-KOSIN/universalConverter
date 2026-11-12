@@ -24,7 +24,7 @@
         <p class="page-lead">種類と変換を選んで、ファイルを入れるだけ。結果はそのままダウンロードされます。</p>
     </div>
 
-    <form id="converter-form" class="bench" method="POST" action="{{ route('converter.convert') }}" enctype="multipart/form-data">
+    <form id="converter-form" class="bench" method="POST" action="{{ route('converter.convert', [], false) }}" enctype="multipart/form-data">
         @csrf
 
         <div class="flow">
@@ -419,8 +419,8 @@
                     document.body.append(link);
                     link.click();
                     link.remove();
-                    URL.revokeObjectURL(objectUrl);
-                    setState('good', '変換が完了しました');
+                    setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+                    setState('ready', '変換が完了しました');
                     status.textContent = 'ダウンロードを開始しました。続けて別のファイルも変換できます。';
                     finishWorking();
                 } catch (error) {

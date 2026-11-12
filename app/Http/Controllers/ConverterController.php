@@ -8,8 +8,8 @@ use App\Services\ConversionLimiter;
 use App\Services\PythonConverter;
 use App\Services\WorkspaceCleaner;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class ConverterController extends Controller
@@ -81,6 +81,7 @@ class ConverterController extends Controller
         // 保存名は利用者のファイル名を使わず、固定名にする。作業領域は公開ディレクトリの外。
         $workDir = $cleaner->root().'/'.Str::uuid();
         File::makeDirectory($workDir, 0700, true);
+        $preserveWorkDir = false;
 
         try {
             $inputName = 'input.'.$extension;
@@ -102,11 +103,12 @@ class ConverterController extends Controller
 
                 Cache::put('converter:task:'.$taskId, $task, now()->addHour());
                 ProcessConversion::dispatch($taskId, $task);
+                $preserveWorkDir = true;
 
                 return response()->json([
                     'status' => 'queued',
-                    'status_url' => route('converter.status', $taskId),
-                    'download_url' => route('converter.download', $taskId),
+                    'status_url' => route('converter.status', $taskId, false),
+                    'download_url' => route('converter.download', $taskId, false),
                 ], 202);
             }
 
@@ -118,12 +120,18 @@ class ConverterController extends Controller
 
             $contents = File::get($outputPath);
         } catch (ConversionException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return back()
                 ->withInput($request->only('operation', 'page'))
                 ->withErrors(['file' => $e->getMessage()]);
         } finally {
-            // 成功・失敗どちらでも一時ファイルを削除する。
-            File::deleteDirectory($workDir);
+            // 同期処理の一時ファイルはここで削除し、キュー処理分はジョブが完了まで保持する。
+            if (! $preserveWorkDir) {
+                File::deleteDirectory($workDir);
+            }
         }
 
         return response()->streamDownload(
