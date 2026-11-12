@@ -11,6 +11,9 @@ return [
     */
     'python' => env('CONVERTER_PYTHON', 'python3'),
 
+    // 文字起こしモデル。メモリの少ない環境でも動くよう tiny を既定にする。
+    'whisper_model' => env('CONVERTER_WHISPER_MODEL', 'tiny'),
+
     // Python を実行する作業ディレクトリ（converter パッケージがある場所）
     'working_directory' => base_path('python'),
 

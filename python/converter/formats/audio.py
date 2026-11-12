@@ -61,7 +61,10 @@ def audio_to_text(input_path, output_path):
 
     from faster_whisper import WhisperModel
 
-    model = WhisperModel("small", device="cpu", compute_type="int8")
+    # `small` can exceed the memory limit of the application's free hosting tier.
+    # Allow deployments with more memory to opt into a larger model.
+    model_name = os.environ.get("CONVERTER_WHISPER_MODEL", "tiny")
+    model = WhisperModel(model_name, device="cpu", compute_type="int8")
     segments, _ = model.transcribe(
         str(input_path), language="ja", vad_filter=True, beam_size=3
     )

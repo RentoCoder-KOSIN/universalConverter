@@ -62,6 +62,7 @@ class PythonConverter
             [
                 'PYTHONIOENCODING' => 'utf-8',
                 'PYTHONUTF8' => '1',
+                'CONVERTER_WHISPER_MODEL' => (string) config('converter.whisper_model', 'tiny'),
                 // FFmpeg は Laravel のタイムアウトより先に自分で止まるようにする。
                 // （Python を強制終了しても、子プロセスの FFmpeg が残らないようにするため）
                 'CONVERTER_FFMPEG_TIMEOUT' => (string) max(1, $timeout - 5),
