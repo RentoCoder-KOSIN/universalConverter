@@ -2,3 +2,5 @@ Pillow>=11,<13
 pypdf>=5,<7
 pypdfium2>=4,<6
 faster-whisper>=1,<2
+# faster-whisper 1.x passes metadata_errors to av.open(); PyAV 19 removed it.
+av>=11,<19
