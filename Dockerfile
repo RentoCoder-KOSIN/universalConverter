@@ -4,7 +4,8 @@ FROM php:8.4-apache
 ENV DEBIAN_FRONTEND=noninteractive \
     APACHE_DOCUMENT_ROOT=/var/www/html/public \
     PORT=10000 \
-    CONVERTER_PYTHON=/opt/venv/bin/python
+    CONVERTER_PYTHON=/opt/venv/bin/python \
+    HF_HOME=/var/www/html/storage/app/private/huggingface
 
 # FFmpeg（音声変換・Whisper）、Tesseract（日本語 OCR）、Python（変換エンジン）、Composer に必要なツール
 RUN apt-get update \
@@ -35,7 +36,7 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-in
 # アプリ本体（.dockerignore で .env やテスト用ファイルを除外している）
 COPY . .
 RUN composer dump-autoload --no-dev --optimize --no-interaction \
-    && mkdir -p storage/app/private/converter storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && mkdir -p storage/app/private/converter storage/app/private/huggingface storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
