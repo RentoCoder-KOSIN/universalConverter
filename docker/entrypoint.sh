@@ -32,6 +32,11 @@ artisan view:cache
 # マイグレーションの失敗で変換機能まで止めない
 artisan migrate --force || echo "WARN: migrate に失敗しました（変換機能には影響しません）" >&2
 
+# 長時間かかる文字起こしや変換を HTTP リクエストから切り離す。
+if [ "${QUEUE_CONNECTION:-database}" != "sync" ]; then
+    artisan queue:work --sleep=1 --tries=1 --timeout=330 --max-time=3600 &
+fi
+
 # 異常終了で残った一時ファイルを定期的に削除する（リクエスト時にも削除している）
 (
     while true; do

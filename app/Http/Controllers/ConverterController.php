@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ConversionException;
+use App\Jobs\ProcessConversion;
 use App\Services\ConversionLimiter;
 use App\Services\PythonConverter;
 use App\Services\WorkspaceCleaner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class ConverterController extends Controller
@@ -86,6 +88,28 @@ class ConverterController extends Controller
 
             $upload->move($workDir, $inputName);
 
+            if ($request->expectsJson() && $converter->timeoutFor($operationName) >= 60) {
+                $taskId = (string) Str::uuid();
+                $task = [
+                    'status' => 'queued',
+                    'operation' => $operationName,
+                    'work_dir' => $workDir,
+                    'input_path' => $workDir.'/'.$inputName,
+                    'output_path' => $outputPath,
+                    'download_name' => $this->downloadName($upload->getClientOriginalName(), $outputExtension),
+                    'mime' => $operation['mime'],
+                ];
+
+                Cache::put('converter:task:'.$taskId, $task, now()->addHour());
+                ProcessConversion::dispatch($taskId, $task);
+
+                return response()->json([
+                    'status' => 'queued',
+                    'status_url' => route('converter.status', $taskId),
+                    'download_url' => route('converter.download', $taskId),
+                ], 202);
+            }
+
             // 同時実行数の上限を超えているときは、変換を始めずに断る。
             $limiter->run(
                 fn () => $converter->convert($operationName, $workDir.'/'.$inputName, $outputPath, $pageNumber),
@@ -109,6 +133,39 @@ class ConverterController extends Controller
             $this->downloadName($upload->getClientOriginalName(), $outputExtension),
             ['Content-Type' => $this->contentType($operation['mime'])],
         );
+    }
+
+    public function status(string $taskId)
+    {
+        abort_unless(Str::isUuid($taskId), 404);
+
+        $task = Cache::get('converter:task:'.$taskId);
+        abort_unless(is_array($task), 404);
+
+        return response()->json(array_intersect_key($task, array_flip(['status', 'message'])));
+    }
+
+    public function download(string $taskId)
+    {
+        abort_unless(Str::isUuid($taskId), 404);
+
+        $key = 'converter:task:'.$taskId;
+        $task = Cache::get($key);
+        abort_unless(is_array($task) && ($task['status'] ?? null) === 'completed', 404);
+        abort_unless(File::isFile($task['output_path']), 404);
+
+        return response()->streamDownload(function () use ($task, $key): void {
+            try {
+                $stream = fopen($task['output_path'], 'rb');
+                if ($stream !== false) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }
+            } finally {
+                File::deleteDirectory($task['work_dir']);
+                Cache::forget($key);
+            }
+        }, $task['download_name'], ['Content-Type' => $this->contentType($task['mime'])]);
     }
 
     /**

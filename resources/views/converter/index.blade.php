@@ -329,21 +329,104 @@
                 zone.addEventListener(name, function () { zone.classList.remove('is-over'); });
             });
 
-            // 二重送信を防ぐ
-            form.addEventListener('submit', function () {
+            function setWorking(message) {
                 working = true;
                 submit.disabled = true;
                 form.classList.add('is-working');
-                setState('work', '変換しています');
-                status.textContent = '終わるとダウンロードが始まります。';
+                setState('work', '処理しています');
+                status.textContent = message;
+            }
 
-                // ダウンロードが始まるとページ遷移しないため、少し後に戻す
-                setTimeout(function () {
-                    working = false;
-                    form.classList.remove('is-working');
-                    status.textContent = 'ダウンロードが始まらないときは、少し待ってからもう一度押してください。';
-                    checkFile();
-                }, 4000);
+            function finishWorking() {
+                working = false;
+                submit.disabled = false;
+                form.classList.remove('is-working');
+                checkFile();
+            }
+
+            function showError(message) {
+                finishWorking();
+                setState('warn', '変換できませんでした');
+                status.textContent = message;
+            }
+
+            async function pollTask(statusUrl, downloadUrl) {
+                while (working) {
+                    await new Promise(function (resolve) { setTimeout(resolve, 1200); });
+
+                    const response = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
+                    if (!response.ok) {
+                        throw new Error('処理状況を確認できませんでした。ページを再読み込みしてください。');
+                    }
+
+                    const task = await response.json();
+                    if (task.status === 'completed') {
+                        status.textContent = '完了しました。ダウンロードを開始します。';
+                        window.location.assign(downloadUrl);
+                        setTimeout(finishWorking, 1500);
+                        return;
+                    }
+
+                    if (task.status === 'failed') {
+                        showError(task.message || '変換に失敗しました。ファイルを選び直して、もう一度お試しください。');
+                        return;
+                    }
+
+                    status.textContent = task.status === 'queued'
+                        ? '変換の順番を待っています。準備ができ次第、自動で開始します。'
+                        : '変換しています。音声の長さによって数分かかる場合があります。この画面を開いたままお待ちください。';
+                }
+            }
+
+            // 二重送信を防ぎ、長い処理もページを移動せず状態を表示する
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                if (working) { return; }
+
+                setWorking('ファイルを送信しています。変換が終わるとダウンロードが始まります。');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    if (response.status === 202) {
+                        const task = await response.json();
+                        status.textContent = '変換を受け付けました。順番が来るまでこの画面でお待ちください。';
+                        await pollTask(task.status_url, task.download_url);
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        const payload = await response.json().catch(function () { return {}; });
+                        const errors = payload.errors ? Object.values(payload.errors).flat() : [];
+                        throw new Error(errors[0] || payload.message || '変換に失敗しました。ファイルや設定を確認してください。');
+                    }
+
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const utf8Name = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                    const plainName = disposition.match(/filename="?([^";]+)"?/i);
+                    const filename = utf8Name
+                        ? decodeURIComponent(utf8Name[1])
+                        : (plainName ? plainName[1] : 'converted');
+                    const link = document.createElement('a');
+                    const objectUrl = URL.createObjectURL(blob);
+                    link.href = objectUrl;
+                    link.download = filename;
+                    document.body.append(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(objectUrl);
+                    setState('good', '変換が完了しました');
+                    status.textContent = 'ダウンロードを開始しました。続けて別のファイルも変換できます。';
+                    finishWorking();
+                } catch (error) {
+                    showError(error instanceof Error ? error.message : '通信に失敗しました。接続を確認して、もう一度お試しください。');
+                }
+
             });
 
             const selected = current();
