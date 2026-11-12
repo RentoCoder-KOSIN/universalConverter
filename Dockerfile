@@ -6,9 +6,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PORT=10000 \
     CONVERTER_PYTHON=/opt/venv/bin/python
 
-# FFmpeg（音声変換）、Python（変換エンジン）、Composer に必要なツール
+# FFmpeg（音声変換・Whisper）、Tesseract（日本語 OCR）、Python（変換エンジン）、Composer に必要なツール
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg python3 python3-venv git unzip \
+    && apt-get install -y --no-install-recommends ffmpeg tesseract-ocr tesseract-ocr-jpn python3 python3-venv git unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Apache: 公開ディレクトリを public/ にし、Render が渡す $PORT で待ち受ける

@@ -94,9 +94,9 @@ class PythonConverter
             'code' => is_array($result) ? ($result['code'] ?? null) : null,
         ];
 
-        // 変換エンジンが結果の JSON を返さずに終了した（Python が import に失敗した等）ときだけ、
-        // 原因の手がかりとして標準エラーの末尾（最後の 300 文字）を残す。
-        if (! is_array($result)) {
+        // Python が想定外エラーを返した場合も、原因の手がかりとして
+        // 標準エラーの末尾（最後の 300 文字）をログにだけ残す。
+        if (! is_array($result) || ($result['code'] ?? null) === 'internal_error') {
             $context['stderr_tail'] = mb_scrub(mb_substr(trim($process->getErrorOutput()), -300));
         }
 
